@@ -98,13 +98,20 @@ class PlaylistsPage extends StatelessWidget {
 
     return Consumer<PlaylistProvider>(
       builder: (context, playlist, _) {
+        // Stats playlists
+        final totalTracksInPlaylists = playlist.playlists
+            .fold<int>(0, (sum, p) => sum + p.trackCount);
+        final totalDurationSec = playlist.playlists
+            .fold<int>(0, (sum, p) => sum + p.totalDuration);
+        final totalDurationMin = totalDurationSec ~/ 60;
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
             // ——— Header ———
             Padding(
-              padding: EdgeInsets.fromLTRB(r.paddingH, 8, r.paddingH, 16),
+              padding: EdgeInsets.fromLTRB(r.paddingH, 8, r.paddingH, 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -149,6 +156,45 @@ class PlaylistsPage extends StatelessWidget {
               ),
             ),
 
+            // ——— Stats playlists ———
+            if (playlist.playlists.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.fromLTRB(r.paddingH, 0, r.paddingH, 12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: card,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: border),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _PlaylistStat(
+                        icon: Icons.queue_music,
+                        value: '${playlist.playlists.length}',
+                        label: 'Playlists',
+                        color: ciOrange,
+                      ),
+                      Container(width: 1, height: 24, color: border),
+                      _PlaylistStat(
+                        icon: Icons.music_note,
+                        value: '$totalTracksInPlaylists',
+                        label: 'Morceaux',
+                        color: ciGreen,
+                      ),
+                      Container(width: 1, height: 24, color: border),
+                      _PlaylistStat(
+                        icon: Icons.timer_outlined,
+                        value: '${totalDurationMin}min',
+                        label: 'Durée totale',
+                        color: ciOrange,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
             Expanded(
               child: playlist.isLoadingPlaylists
                   ? const Center(
@@ -165,6 +211,12 @@ class PlaylistsPage extends StatelessWidget {
                     const Text(
                       'Aucune playlist',
                       style: TextStyle(color: textS, fontSize: 14),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Crée ta première playlist pour organiser tes morceaux',
+                      style: TextStyle(color: textDim, fontSize: 11),
+                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
                     GestureDetector(
@@ -206,6 +258,43 @@ class PlaylistsPage extends StatelessWidget {
   }
 }
 
+// ——— Stat pour la page playlists ———
+class _PlaylistStat extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  const _PlaylistStat({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 14),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 9, color: textDim),
+        ),
+      ],
+    );
+  }
+}
+
 // ——— Carte playlist ———
 class _PlaylistCard extends StatefulWidget {
   final Playlist playlist;
@@ -217,15 +306,21 @@ class _PlaylistCard extends StatefulWidget {
 
 class _PlaylistCardState extends State<_PlaylistCard> {
   bool _expanded = false;
+  bool _isAddingTrack = false;
 
   // ——— Dialog ajout de morceau ———
   void _showAddTrackDialog(BuildContext context) {
     final playlistProvider = context.read<PlaylistProvider>();
     final allTracks = playlistProvider.allTracks;
 
+    // Récupère la playlist à jour depuis le provider
+    final freshPlaylist = playlistProvider.playlists
+        .where((p) => p.id == widget.playlist.id)
+        .firstOrNull ?? widget.playlist;
+
     // Filtre les morceaux qui ne sont pas déjà dans la playlist
     final availableTracks = allTracks.where((t) =>
-    !widget.playlist.tracks.any((pt) => pt.id == t.id)
+    !freshPlaylist.tracks.any((pt) => pt.id == t.id)
     ).toList();
 
     showModalBottomSheet(
@@ -318,10 +413,12 @@ class _PlaylistCardState extends State<_PlaylistCard> {
                     track: track,
                     onAdd: () async {
                       Navigator.pop(context);
+                      setState(() => _isAddingTrack = true);
                       await playlistProvider.addTrackToPlaylist(
                         playlistId: widget.playlist.id,
                         track: track,
                       );
+                      if (mounted) setState(() => _isAddingTrack = false);
 
                       // Notification de succès
                       if (context.mounted) {
@@ -395,6 +492,11 @@ class _PlaylistCardState extends State<_PlaylistCard> {
   Widget build(BuildContext context) {
     return Consumer2<PlayerProvider, PlaylistProvider>(
       builder: (context, player, playlistProvider, _) {
+        // Récupère la playlist à jour depuis le provider
+        final currentPlaylist = playlistProvider.playlists
+            .where((p) => p.id == widget.playlist.id)
+            .firstOrNull ?? widget.playlist;
+
         return GestureDetector(
           onTap: () => setState(() => _expanded = !_expanded),
           child: AnimatedContainer(
@@ -419,7 +521,7 @@ class _PlaylistCardState extends State<_PlaylistCard> {
                         children: [
                           Expanded(
                             child: Text(
-                              widget.playlist.name,
+                              currentPlaylist.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -432,7 +534,7 @@ class _PlaylistCardState extends State<_PlaylistCard> {
                           Row(
                             children: [
                               Text(
-                                '${widget.playlist.trackCount} titre${widget.playlist.trackCount > 1 ? 's' : ''}',
+                                '${currentPlaylist.trackCount} titre${currentPlaylist.trackCount > 1 ? 's' : ''}',
                                 style: const TextStyle(
                                     fontSize: 10, color: textS),
                               ),
@@ -454,7 +556,7 @@ class _PlaylistCardState extends State<_PlaylistCard> {
                       // Mini pochettes
                       Row(
                         children: [
-                          ...widget.playlist.tracks.take(4).map(
+                          ...currentPlaylist.tracks.take(4).map(
                                 (t) => Padding(
                               padding: const EdgeInsets.only(right: 6),
                               child: CoverArt(track: t, size: 36, radius: 8),
@@ -469,7 +571,7 @@ class _PlaylistCardState extends State<_PlaylistCard> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            widget.playlist.formattedTotalDuration,
+                            currentPlaylist.formattedTotalDuration,
                             style: const TextStyle(fontSize: 10, color: textDim),
                           ),
                           Row(
@@ -477,7 +579,9 @@ class _PlaylistCardState extends State<_PlaylistCard> {
 
                               // ——— Bouton ajouter morceau ———
                               GestureDetector(
-                                onTap: () => _showAddTrackDialog(context),
+                                onTap: _isAddingTrack
+                                    ? null
+                                    : () => _showAddTrackDialog(context),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 6,
@@ -486,20 +590,35 @@ class _PlaylistCardState extends State<_PlaylistCard> {
                                     color: ciGreen.withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: const Row(
-                                    children: [
-                                      Icon(Icons.add, color: ciGreen, size: 13),
-                                      SizedBox(width: 3),
-                                      Text(
-                                        'Ajouter',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w700,
-                                          color: ciGreen,
+                                  child: _isAddingTrack
+                                      ? const SizedBox(
+                                          width: 50,
+                                          height: 13,
+                                          child: Center(
+                                            child: SizedBox(
+                                              width: 13,
+                                              height: 13,
+                                              child: CircularProgressIndicator(
+                                                color: ciGreen,
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                      : const Row(
+                                          children: [
+                                            Icon(Icons.add, color: ciGreen, size: 13),
+                                            SizedBox(width: 3),
+                                            Text(
+                                              'Ajouter',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
+                                                color: ciGreen,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                    ],
-                                  ),
                                 ),
                               ),
 
@@ -507,7 +626,7 @@ class _PlaylistCardState extends State<_PlaylistCard> {
 
                               // ——— Bouton lire ———
                               GestureDetector(
-                                onTap: () => player.playPlaylist(widget.playlist),
+                                onTap: () => player.playPlaylist(currentPlaylist),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 6,
@@ -546,7 +665,7 @@ class _PlaylistCardState extends State<_PlaylistCard> {
                   Column(
                     children: [
                       Divider(color: border, height: 1),
-                      ...widget.playlist.tracks.map(
+                      ...currentPlaylist.tracks.map(
                             (t) => Dismissible(
                           // Swipe gauche pour retirer
                           key: ValueKey(t.id),
@@ -565,9 +684,9 @@ class _PlaylistCardState extends State<_PlaylistCard> {
                           child: TrackRow(
                             track: t,
                             onTap: () {
-                              final idx = widget.playlist.tracks.indexOf(t);
+                              final idx = currentPlaylist.tracks.indexOf(t);
                               player.playPlaylist(
-                                widget.playlist,
+                                currentPlaylist,
                                 startIndex: idx,
                               );
                             },

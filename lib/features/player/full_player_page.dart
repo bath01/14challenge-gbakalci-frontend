@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/models/PlayerState.dart';
+import '../../core/models/PlayerState.dart' as ps;
 import '../../core/providers/player_provider.dart';
 import '../../shared/theme.dart';
 import '../../shared/responsive.dart';
@@ -223,10 +223,10 @@ class FullPlayerPage extends StatelessWidget {
                       IconButton(
                         onPressed: () => player.cycleRepeatMode(),
                         icon: Icon(
-                          player.state.repeatMode == RepeatMode.one
+                          player.state.repeatMode == ps.RepeatMode.one
                               ? Icons.repeat_one
                               : Icons.repeat,
-                          color: player.state.repeatMode != RepeatMode.none
+                          color: player.state.repeatMode != ps.RepeatMode.none
                               ? ciOrange
                               : textDim,
                           size: r.isSmall ? 20 : 22,

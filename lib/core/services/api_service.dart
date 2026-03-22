@@ -310,10 +310,13 @@ class ApiService {
 
     try {
       debugPrint('[ApiService.addTrackToPlaylist] Appel API POST /Playlists/$playlistId/tracks/$trackId...');
-      final response = await _dio.post('/Playlists/$playlistId/tracks/$trackId');
-      debugPrint('[ApiService.addTrackToPlaylist] Réponse: ${response.data}');
-      final playlist = Playlist.fromJson(response.data as Map<String, dynamic>);
-      debugPrint('[ApiService.addTrackToPlaylist] ✅ Ajout OK');
+      await _dio.post('/Playlists/$playlistId/tracks/$trackId');
+      debugPrint('[ApiService.addTrackToPlaylist] ✅ Ajout OK — rechargement playlist...');
+
+      // L'API retourne 204 sans body, on re-fetch la playlist à jour
+      final refreshed = await _dio.get('/Playlists/$playlistId');
+      final playlist = Playlist.fromJson(refreshed.data as Map<String, dynamic>);
+      debugPrint('[ApiService.addTrackToPlaylist] ✅ Playlist rechargée: ${playlist.trackCount} morceaux');
       return playlist;
     } on DioException catch (e) {
       debugPrint('[ApiService.addTrackToPlaylist] ❌ DioException: ${e.message}');
@@ -339,10 +342,13 @@ class ApiService {
 
     try {
       debugPrint('[ApiService.removeTrackFromPlaylist] Appel API DELETE /Playlists/$playlistId/tracks/$trackId...');
-      final response = await _dio.delete('/Playlists/$playlistId/tracks/$trackId');
-      debugPrint('[ApiService.removeTrackFromPlaylist] Réponse: ${response.data}');
-      final playlist = Playlist.fromJson(response.data as Map<String, dynamic>);
-      debugPrint('[ApiService.removeTrackFromPlaylist] ✅ Suppression OK');
+      await _dio.delete('/Playlists/$playlistId/tracks/$trackId');
+      debugPrint('[ApiService.removeTrackFromPlaylist] ✅ Suppression OK — rechargement playlist...');
+
+      // L'API retourne 204 sans body, on re-fetch la playlist à jour
+      final refreshed = await _dio.get('/Playlists/$playlistId');
+      final playlist = Playlist.fromJson(refreshed.data as Map<String, dynamic>);
+      debugPrint('[ApiService.removeTrackFromPlaylist] ✅ Playlist rechargée: ${playlist.trackCount} morceaux');
       return playlist;
     } on DioException catch (e) {
       debugPrint('[ApiService.removeTrackFromPlaylist] ❌ DioException: ${e.message}');

@@ -26,6 +26,7 @@ class TrackRow extends StatelessWidget {
       builder: (context, player, _) {
         final isActive = player.state.currentTrack?.id == track.id;
         final isPlaying = isActive && player.state.isPlaying;
+        final isLoading = isActive && player.state.isLoading;
 
         return GestureDetector(
           onTap: onTap ?? () => player.playTrack(track),
@@ -53,11 +54,25 @@ class TrackRow extends StatelessWidget {
               children: [
 
                 // ——— Pochette ———
-                CoverArt(
-                  track: track,
-                  size: r.coverSizeMini,
-                  radius: 10,
-                  isPlaying: isPlaying,
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CoverArt(
+                      track: track,
+                      size: r.coverSizeMini,
+                      radius: 10,
+                      isPlaying: isPlaying,
+                    ),
+                    if (isLoading)
+                      SizedBox(
+                        width: r.coverSizeMini * 0.6,
+                        height: r.coverSizeMini * 0.6,
+                        child: const CircularProgressIndicator(
+                          color: ciOrange,
+                          strokeWidth: 2,
+                        ),
+                      ),
+                  ],
                 ),
 
                 SizedBox(width: r.gap),

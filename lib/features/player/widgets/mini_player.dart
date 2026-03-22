@@ -99,16 +99,25 @@ class MiniPlayer extends StatelessWidget {
 
                     SizedBox(width: r.gap * 0.5),
 
-                    GestureDetector(
-                      onTap: () => player.togglePlayPause(),
-                      child: Icon(
-                        player.state.isPlaying
-                            ? Icons.pause
-                            : Icons.play_arrow,
-                        color: textP,
-                        size: r.isSmall ? 24 : 28,
-                      ),
-                    ),
+                    player.state.isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: ciOrange,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : GestureDetector(
+                            onTap: () => player.togglePlayPause(),
+                            child: Icon(
+                              player.state.isPlaying
+                                  ? Icons.pause
+                                  : Icons.play_arrow,
+                              color: textP,
+                              size: r.isSmall ? 24 : 28,
+                            ),
+                          ),
                   ],
                 ),
 

@@ -16,7 +16,15 @@ class PlayerProvider extends ChangeNotifier {
   final Random _random = Random();
   PlayerState _state = PlayerState.initial();
 
+  // Liste globale des morceaux pour navigation sans playlist
+  List<Track> _allTracks = [];
+
   PlayerState get state => _state;
+
+  // Permet de fournir la liste complète des morceaux pour la navigation
+  void setAllTracks(List<Track> tracks) {
+    _allTracks = tracks;
+  }
 
   PlayerProvider({
     required PlayerService playerService,
@@ -232,48 +240,86 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> skipToNext() async {
-    if (_state.currentPlaylist == null) return;
+    // Navigation via playlist si disponible
+    if (_state.currentPlaylist != null) {
+      final nextTrack = _state.nextTrack;
+      if (nextTrack == null) {
+        await stop();
+        return;
+      }
 
-    final nextTrack = _state.nextTrack;
-    if (nextTrack == null) {
-      await stop();
+      final nextIndex = _state.repeatMode == RepeatMode.all &&
+          _state.currentIndex >= _state.currentPlaylist!.trackCount - 1
+          ? 0
+          : _state.currentIndex + 1;
+
+      _updateState(_state.copyWith(
+        currentTrack: nextTrack,
+        currentIndex: nextIndex,
+        currentTime: Duration.zero,
+      ));
+
+      await _playerService.skipToNext();
       return;
     }
 
-    final nextIndex = _state.repeatMode == RepeatMode.all &&
-        _state.currentIndex >= _state.currentPlaylist!.trackCount - 1
-        ? 0
-        : _state.currentIndex + 1;
+    // Navigation via la liste globale des morceaux
+    if (_allTracks.isNotEmpty && _state.currentTrack != null) {
+      final currentIdx = _allTracks.indexWhere((t) => t.id == _state.currentTrack!.id);
+      if (currentIdx == -1) return;
 
-    _updateState(_state.copyWith(
-      currentTrack: nextTrack,
-      currentIndex: nextIndex,
-      currentTime: Duration.zero,
-    ));
+      final nextIdx = currentIdx + 1 < _allTracks.length
+          ? currentIdx + 1
+          : (_state.repeatMode == RepeatMode.all ? 0 : -1);
 
-    await _playerService.skipToNext();
+      if (nextIdx == -1) {
+        await stop();
+        return;
+      }
+
+      await playTrack(_allTracks[nextIdx]);
+    }
   }
 
   Future<void> skipToPrevious() async {
-    if (_state.currentPlaylist == null) return;
+    // Navigation via playlist si disponible
+    if (_state.currentPlaylist != null) {
+      final prevTrack = _state.previousTrack;
+      if (prevTrack == null) {
+        await seekTo(Duration.zero);
+        return;
+      }
 
-    final prevTrack = _state.previousTrack;
-    if (prevTrack == null) {
-      await seekTo(Duration.zero);
+      final prevIndex = _state.currentIndex > 0
+          ? _state.currentIndex - 1
+          : _state.currentPlaylist!.trackCount - 1;
+
+      _updateState(_state.copyWith(
+        currentTrack: prevTrack,
+        currentIndex: prevIndex,
+        currentTime: Duration.zero,
+      ));
+
+      await _playerService.skipToPrevious();
       return;
     }
 
-    final prevIndex = _state.currentIndex > 0
-        ? _state.currentIndex - 1
-        : _state.currentPlaylist!.trackCount - 1;
+    // Navigation via la liste globale des morceaux
+    if (_allTracks.isNotEmpty && _state.currentTrack != null) {
+      final currentIdx = _allTracks.indexWhere((t) => t.id == _state.currentTrack!.id);
+      if (currentIdx == -1) return;
 
-    _updateState(_state.copyWith(
-      currentTrack: prevTrack,
-      currentIndex: prevIndex,
-      currentTime: Duration.zero,
-    ));
+      final prevIdx = currentIdx - 1 >= 0
+          ? currentIdx - 1
+          : (_state.repeatMode == RepeatMode.all ? _allTracks.length - 1 : -1);
 
-    await _playerService.skipToPrevious();
+      if (prevIdx == -1) {
+        await seekTo(Duration.zero);
+        return;
+      }
+
+      await playTrack(_allTracks[prevIdx]);
+    }
   }
 
   // ——— VOLUME ———

@@ -27,14 +27,10 @@ void main() async {
           ),
         ),
         ChangeNotifierProvider(
-          create: (_) {
-            final provider = PlaylistProvider(
+          create: (_) => PlaylistProvider(
               playlistService: playlistService,
               apiService: apiService,
-            );
-            provider.loadAll();
-            return provider;
-          },
+            ),
         ),
         ChangeNotifierProvider(
           create: (_) => DownloadProvider(downloadService: downloadService),

@@ -107,17 +107,17 @@ class _AppShellState extends State<AppShell> {
         ),
         child: Row(
           children: [
-            _buildNavItem(r, '🏠', 'Accueil', 0),
-            _buildNavItem(r, '🎵', 'Biblio', 1),
-            _buildNavItem(r, '📋', 'Playlists', 2),
-            _buildNavItem(r, 'ℹ️', 'À propos', 3),
+            _buildNavItem(r, Icons.home_rounded, 'Accueil', 0),
+            _buildNavItem(r, Icons.library_music_rounded, 'Biblio', 1),
+            _buildNavItem(r, Icons.queue_music_rounded, 'Playlists', 2),
+            _buildNavItem(r, Icons.info_outline_rounded, 'À propos', 3),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(Responsive r, String emoji, String label, int index) {
+  Widget _buildNavItem(Responsive r, IconData icon, String label, int index) {
     final isSelected = _currentIndex == index;
     return Expanded(
       child: GestureDetector(
@@ -126,12 +126,10 @@ class _AppShellState extends State<AppShell> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              emoji,
-              style: TextStyle(
-                fontSize: r.isSmall ? 16 : 18,
-                color: Colors.white.withOpacity(isSelected ? 1.0 : 0.4),
-              ),
+            Icon(
+              icon,
+              size: r.isSmall ? 20 : 22,
+              color: isSelected ? ciOrange : textDim,
             ),
             const SizedBox(height: 2),
             Text(

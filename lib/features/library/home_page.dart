@@ -24,6 +24,15 @@ class _HomePageState extends State<HomePage> {
     return tracks.where((t) => t.genre == _selectedGenre).toList();
   }
 
+  // Calcule la durée totale formatée
+  String _formatTotalDuration(List<Track> tracks) {
+    final totalSec = tracks.fold<int>(0, (sum, t) => sum + t.duration);
+    final hours = totalSec ~/ 3600;
+    final minutes = (totalSec % 3600) ~/ 60;
+    if (hours > 0) return '${hours}h ${minutes}min';
+    return '${minutes}min';
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = Responsive(context);
@@ -33,11 +42,18 @@ class _HomePageState extends State<HomePage> {
         final track = player.state.currentTrack;
         final filtered = _filterTracks(playlist.allTracks);
 
+        // Fournit la liste des morceaux au player pour la navigation next/prev
+        player.setAllTracks(playlist.allTracks);
+
         // ——— Catégories dynamiques depuis l'API ———
         final categories = [
           'Tous',
           ...playlist.categories.map((c) => c.name),
         ];
+
+        // ——— Stats calculées ———
+        final totalDuration = _formatTotalDuration(playlist.allTracks);
+        final artistCount = playlist.uniqueArtists.length;
 
         return Column(
           children: [
@@ -137,6 +153,51 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
 
+            // ——— Bandeau stats horizontal ———
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: r.paddingH),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: card,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: border),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _MiniStat(
+                    icon: Icons.music_note,
+                    value: '${playlist.trackCount}',
+                    label: 'Titres',
+                    color: ciOrange,
+                  ),
+                  _divider(),
+                  _MiniStat(
+                    icon: Icons.person,
+                    value: '$artistCount',
+                    label: 'Artistes',
+                    color: ciGreen,
+                  ),
+                  _divider(),
+                  _MiniStat(
+                    icon: Icons.timer_outlined,
+                    value: totalDuration,
+                    label: 'Durée',
+                    color: ciOrange,
+                  ),
+                  _divider(),
+                  _MiniStat(
+                    icon: Icons.category_outlined,
+                    value: '${playlist.categories.length}',
+                    label: 'Genres',
+                    color: ciGreen,
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: r.gap),
+
             // ——— Filtres catégories ———
             if (playlist.isLoadingCategories)
               SizedBox(
@@ -159,6 +220,10 @@ class _HomePageState extends State<HomePage> {
                   itemBuilder: (_, i) {
                     final g = categories[i];
                     final isSelected = g == _selectedGenre;
+                    // Compte les morceaux par catégorie
+                    final count = g == 'Tous'
+                        ? playlist.allTracks.length
+                        : playlist.allTracks.where((t) => t.genre == g).length;
                     return GestureDetector(
                       onTap: () => setState(() => _selectedGenre = g),
                       child: AnimatedContainer(
@@ -176,7 +241,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                         child: Center(
                           child: Text(
-                            g,
+                            '$g ($count)',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: r.isSmall ? 10 : 11,
@@ -191,7 +256,31 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
 
-            SizedBox(height: r.gap),
+            SizedBox(height: r.gap * 0.5),
+
+            // ——— Titre section ———
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: r.paddingH),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _selectedGenre == 'Tous' ? 'Tous les morceaux' : _selectedGenre,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: textP,
+                    ),
+                  ),
+                  Text(
+                    '${filtered.length} titre${filtered.length > 1 ? 's' : ''}',
+                    style: const TextStyle(fontSize: 11, color: textDim),
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: r.gap * 0.5),
 
             // ——— Liste des morceaux ———
             Expanded(
@@ -232,6 +321,51 @@ class _HomePageState extends State<HomePage> {
           ],
         );
       },
+    );
+  }
+
+  Widget _divider() {
+    return Container(
+      width: 1,
+      height: 28,
+      color: border,
+    );
+  }
+}
+
+// ——— Mini stat dans le bandeau horizontal ———
+class _MiniStat extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  const _MiniStat({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 16),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 9, color: textDim),
+        ),
+      ],
     );
   }
 }

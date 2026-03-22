@@ -11,6 +11,9 @@ class PlayerService {
     final session = await AudioSession.instance;
     await session.configure(const AudioSessionConfiguration.music());
 
+    // Volume au maximum par défaut
+    await _audioPlayer.setVolume(1.0);
+
     session.interruptionEventStream.listen((event) {
       if (event.begin) {
         pause();
